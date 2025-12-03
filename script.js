@@ -13,26 +13,75 @@ window.onload = function() {
       showCircle: false // 隐藏定位范围圆
     });
 
-    // 定位结果处理（强制兜底默认坐标，避免undefined）
+    // 定位结果处理（增强容错+详细日志）
     geolocation.getCurrentPosition(function(status, result) {
-      console.log('定位状态：', status, '结果：', result); // 便于调试（可删除）
+      console.log('定位状态：', status, '结果：', result); // 便于调试
       if (status === 'complete' && result.position) {
         // 定位成功：保存经纬度+显示真实位置
         currentLnglat = [result.position.lng, result.position.lat];
-        const address = result.formattedAddress || result.addressComponent.city + result.addressComponent.district;
+        
+        // 增强地址获取容错逻辑
+        let address = '未知位置';
+        if (result.formattedAddress) {
+          address = result.formattedAddress;
+        } else if (result.addressComponent) {
+          // 逐级获取地址组件，确保安全拼接
+          const city = result.addressComponent.city || '';
+          const district = result.addressComponent.district || '';
+          const street = result.addressComponent.street || '';
+          const streetNumber = result.addressComponent.streetNumber || '';
+          
+          // 智能拼接地址，避免多余分隔符
+          const addressParts = [city, district, street, streetNumber].filter(Boolean);
+          if (addressParts.length > 0) {
+            address = addressParts.join(' ');
+          }
+        } else {
+          // 当没有地址信息时，使用反向地理编码获取地址
+          AMap.plugin('AMap.Geocoder', function() {
+            const geocoder = new AMap.Geocoder();
+            geocoder.getAddress(currentLnglat, function(geoStatus, geoResult) {
+              if (geoStatus === 'complete' && geoResult.regeocode) {
+                const reverseAddress = geoResult.regeocode.formattedAddress;
+                address = reverseAddress;
+                document.getElementById('locationStatus').textContent = `当前位置：${address}`;
+              }
+            });
+          });
+        }
+        
         document.getElementById('locationStatus').textContent = `当前位置：${address}`;
       } else {
         // 定位失败：强制设置北京坐标（确保搜索功能可用）
         currentLnglat = [116.39748, 39.90882]; // 北京天安门经纬度（稳定可用）
         document.getElementById('locationStatus').textContent = '定位失败，默认使用北京位置';
-        // 可选：弹窗提示用户开启权限（鸿蒙浏览器适配）
+        
+        // 增强权限检查和提示
         if (navigator.permissions && navigator.permissions.query) {
           navigator.permissions.query({ name: 'geolocation' }).then(res => {
+            console.log('位置权限状态：', res.state);
             if (res.state === 'denied') {
               alert('已拒绝位置权限，若需精准定位，请在鸿蒙浏览器设置中开启位置权限');
+            } else if (res.state === 'prompt') {
+              alert('请允许获取位置权限，以获得更精准的搜索结果');
             }
-          }).catch(err => {});
+          }).catch(err => {
+            console.error('权限查询失败：', err);
+          });
+        } else {
+          // 兼容旧版浏览器
+          alert('当前浏览器不支持位置权限查询，请手动开启位置权限');
         }
+        
+        // 可选：尝试使用IP定位获取粗略地址
+        AMap.plugin('AMap.CitySearch', function() {
+          const citySearch = new AMap.CitySearch();
+          citySearch.getLocalCity(function(cityStatus, cityResult) {
+            if (cityStatus === 'complete' && cityResult.city) {
+              document.getElementById('locationStatus').textContent = `定位失败，默认使用${cityResult.city}位置`;
+            }
+          });
+        });
       }
     });
   });
