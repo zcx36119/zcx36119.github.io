@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鸿蒙附近搜索工具</title>
+  <!-- 已嵌入你的高德Key，直接使用 -->
+  <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=6a2ef4daf29132477635d6a927b73887"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>附近搜索</h1>
+    <p id="locationStatus" class="status">正在获取位置...</p>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="输入关键词（如咖啡店、公园、鸿蒙体验店）" class="input">
+      <button id="searchBtn">搜索附近</button>
+    </div>
+    <div id="resultList" class="result-list"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
